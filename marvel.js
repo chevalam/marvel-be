@@ -1,12 +1,12 @@
 /* global require,exports, console */
 var http = require("http");
 var crypto = require("crypto");
+require('dotenv').config();
 
 var cache = [];
 
-var PRIV_KEY = "f0b1f2cbf6e48b833ca168382c4cd76b4f73480b";
-var API_KEY = "e3ad2471f3782136c6c927f4cf29289c";
-
+var PRIV_KEY = process.env.PRIV_KEY;
+var API_KEY = process.env.API_KEY;
 //default not avail image
 var IMAGE_NOT_AVAIL =
   "http://i.annihil.us/u/prod/marvel/i/mg/b/40/image_not_available";
@@ -28,31 +28,9 @@ Object.size = function(obj) {
   return size;
 };
 
-// exports.getPosts = function(cb) {
-// 	http.get('http://jsonplaceholder.typicode.com/posts', function(res) {
-// 		var body = "";
-
-// 		res.on('data', function (chunk) {
-// 			body += chunk;
-// 		});
-
-// 		res.on('end', function() {
-// 			var result = JSON.parse(body);
-// 			var images;
-// 			// console.log('res ', result);
-// 			cb({ posts: result });
-// 			return result;
-// 			if(result.code === 200) {
-// 				images = [];
-// 			}
-// 		});
-
-// 	});
-// }
-
 function getCover(cb) {
   //first select a random year
-  var year = getRandomInt(2012, 2013);
+  var year = getRandomInt(1970, 2019);
   //then a month
   var month = getRandomInt(1, 12);
 
@@ -62,19 +40,11 @@ function getCover(cb) {
     console.log("had cache for " + cache_key);
     var images = cache[cache_key].images;
     cache[cache_key].hits++;
-    // cb(images[getRandomInt(0, images.length-1)]);
     cb({ posts: images });
   } else {
-    var monthStr = month < 10 ? "0" + month : month;
-    //lame logic for end of month
-    var eom = month == 2 ? 28 : 30;
-    var beginDateStr = year + "-" + monthStr + "-01";
-    var endDateStr = year + "-" + monthStr + "-" + eom;
-    // var url = "http://gateway.marvel.com/v1/public/comics?limit=10&format=comic&formatType=comic&dateRange="+beginDateStr+"%2C"+endDateStr+"&apikey="+API_KEY;
     var url =
       "http://gateway.marvel.com/v1/public/comics?limit=100&format=comic&formatType=comic&apikey=" +
       API_KEY;
-    // var url = "http://gateway.marvel.com/v1/public/comics?apikey="+API_KEY;
     var ts = new Date().getTime();
     var hash = crypto
       .createHash("md5")
@@ -92,52 +62,33 @@ function getCover(cb) {
       });
 
       res.on("end", function() {
-        //result.success = true;
 
         var result = JSON.parse(body);
         var images;
 
         if (result.code === 200) {
           images = [];
-          console.log("num of comics " + result.data.results.length);
           for (var i = 0; i < result.data.results.length; i++) {
             var comic = result.data.results[i];
-            //console.dir(comic);
             if (comic.thumbnail && comic.thumbnail.path != IMAGE_NOT_AVAIL) {
               var image = {};
               image.title = comic.title;
+              // console.log('comic ', comic);
               for (var x = 0; x < comic.dates.length; x++) {
-                if (comic.dates[x].type === "onsaleDate") {
+                if (comic.dates[x].type === "focDate") {
                   image.date = new Date(comic.dates[x].date);
                 }
               }
               image.url =
                 comic.thumbnail.path + "." + comic.thumbnail.extension;
+              image.price = comic.prices[0].price;
               images.push(image);
             }
           }
-          //console.dir(images);
           //now cache it
           cache[cache_key] = { hits: 1 };
           cache[cache_key].images = images;
-          // cb(images[getRandomInt(0, images.length-1)]);
           cb({ posts: images });
-        } else if (result.code === "RequestThrottled") {
-          console.log("RequestThrottled Error");
-          /*
-					So don't just fail. If we have a good cache, just grab from there
-					*/
-          if (Object.size(cache) > 5) {
-            var keys = [];
-            for (var k in cache) keys.push(k);
-            var randomCacheKey = keys[getRandomInt(0, keys.length - 1)];
-            images = cache[randomCacheKey].images;
-            cache[randomCacheKey].hits++;
-            cb({ posts: images });
-            // cb(images[getRandomInt(0, images.length-1)]);
-          } else {
-            cb({ error: result.code });
-          }
         } else {
           console.log(new Date() + " Error: " + JSON.stringify(result));
           cb({ error: result.code });

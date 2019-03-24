@@ -1,12 +1,21 @@
 {
-  "name": "marvel",
+  "name": "marvel-be",
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "start": "node app.js"
+    "start": "node app.js",
+    "dev": "nodemon --exec babel-node app.js",
+    "test": "jest --coverage --detectOpenHandles"
   },
   "dependencies": {
     "cors": "^2.8.5",
+    "dotenv": "^7.0.0",
     "express": "3.4.8"
+  },
+  "devDependencies": {
+    "@types/jest": "^24.0.11",
+    "babel-core": "^7.0.0-bridge.0",
+    "babel-jest": "^24.5.0",
+    "jest": "^24.5.0"
   }
 }
